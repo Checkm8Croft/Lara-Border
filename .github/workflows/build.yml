@@ -1,0 +1,67 @@
+name: Build and Release Border
+
+on:
+  push:
+    branches:
+      - main  # Cambia con 'master' se il tuo ramo principale si chiama così
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+    permissions:
+      contents: write # Necessario per cancellare/creare tag e rilasci
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Nim
+        uses: alaviss/setup-nim@v3
+        with:
+          path: 'nim'
+          version: 'stable'
+
+      - name: Compile Launcher
+        run: nim c -d:release launcher.nim
+
+      - name: Clean up old 'border' tag and release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          # Configura l'identità di Git per il bot
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          # 1. Elimina la release associata al tag 'border' su GitHub (se esiste)
+          gh release delete border --yes --cleanup-tag 2>$null || echo "Nessuna release precedente trovata."
+
+          # 2. Elimina il tag remoto 'border' (se esiste)
+          git push origin --delete border 2>$null || echo "Nessun tag remoto precedente trovato."
+
+          # 3. Elimina il tag locale 'border' (se esiste)
+          git tag -d border 2>$null || echo "Nessun tag locale precedente trovato."
+
+      - name: Create and push fresh 'border' tag
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          # Crea il tag 'border' sull'ultimo commit corrente
+          git tag border
+          git push origin border
+
+      - name: Publish/Update Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: 'border'
+          name: 'Tomb Raider Borderless Launcher (Border)'
+          body: 'Automatic continuous build of the universal Tomb Raider custom level launcher.'
+          files: |
+            launcher.exe
+            TR-borderless.sdb
+          draft: false
+          prerelease: false

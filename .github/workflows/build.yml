@@ -3,14 +3,14 @@ name: Build and Release Border
 on:
   push:
     branches:
-      - main  # Cambia con 'master' se il tuo ramo principale si chiama così
+      - main  # Change to 'master' if your main branch is named master
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: windows-latest
     permissions:
-      contents: write # Necessario per cancellare/creare tag e rilasci
+      contents: write # Required to delete/create tags and releases
 
     steps:
       - name: Checkout repository
@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
 
       - name: Setup Nim
-        uses: nim-lang/setup-nim@v1
+        uses: jiro4989/setup-nim-action@v2
         with:
           nim-version: 'stable'
 
@@ -31,25 +31,25 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          # Configura l'identità di Git per il bot
+          # Configure Git bot identity
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
 
-          # 1. Elimina la release associata al tag 'border' su GitHub (se esiste)
-          gh release delete border --yes --cleanup-tag 2>$null || echo "Nessuna release precedente trovata."
+          # 1. Delete the GitHub release associated with the 'border' tag if it exists
+          gh release delete border --yes --cleanup-tag 2>$null || echo "No previous release found."
 
-          # 2. Elimina il tag remoto 'border' (se esiste)
-          git push origin --delete border 2>$null || echo "Nessun tag remoto precedente trovato."
+          # 2. Delete the remote 'border' tag if it exists
+          git push origin --delete border 2>$null || echo "No previous remote tag found."
 
-          # 3. Elimina il tag locale 'border' (se esiste)
-          git tag -d border 2>$null || echo "Nessun tag locale precedente trovato."
+          # 3. Delete the local 'border' tag if it exists
+          git tag -d border 2>$null || echo "No previous local tag found."
 
       - name: Create and push fresh 'border' tag
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          # Crea il tag 'border' sull'ultimo commit corrente
+          # Create a fresh 'border' tag pointing to the latest commit
           git tag border
           git push origin border
 
